@@ -183,3 +183,36 @@ func main() {
 	}
 	logger.Logger.Infof("Finishing application...")
 }
+
+// ScanDir - принимает начальную папку и сканирует все подпапки
+// для каждой подпапки запускает саму себя, выделяя новый поточек
+func ScanDir(pathDir string, rootDir string) {
+	defer wg.Done()
+	defer func() {
+		err := recover()
+		if err != nil {
+			entry := err.(*logrus.Entry)
+			logger.Logger.WithFields(logrus.Fields{
+				"dir_root":  rootDir, // рут папка
+				"dir_err":    pathDir,
+				"err_level":   entry.Level,
+				"err_message": entry.Message,
+			}).Error("Ошибка!!! Доступ к папке!!!")
+		}
+	}()
+
+	dirs, err := fscan.IOReadDir(pathDir, fileSet, deepScan)
+	if err != nil {
+		logger.Logger.Panicf("Error reading dirs: %v", err)
+		//logger.Logger.Errorf("Error reading dirs: %v", err)
+		return
+	}
+
+	for _, dir := range dirs {
+		wg.Add(1)
+		atomic.AddInt64(&goProcCounter, 1)
+		sDir := pathDir + "/" + dir
+		go ScanDir(sDir, pathDir)
+	}
+
+}

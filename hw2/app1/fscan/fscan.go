@@ -44,13 +44,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/pehks1980/gb_go_best/hw2/app1/logger"
-	"github.com/pehks1980/gb_go_best/hw3/app1/fscan"
-	"github.com/sirupsen/logrus"
 	"hash/crc32"
 	"io"
 	"os"
 	"sync"
-	"sync/atomic"
 )
 
 // FileElem is структура найденного файла.
@@ -155,7 +152,7 @@ func DeleteDup(dub string) error {
 // root  - каталог где искать
 // fileSet - указатель на хеш таблицу найденных файлов
 // deepScan - ключ программы делать и учитывать md5 файлов
-func (s *RWSet) IOReadDir(root string, fileSet *RWSet, deepScan *bool) ([]string, error) {
+func IOReadDir(root string, fileSet *RWSet, deepScan *bool) ([]string, error) {
 	var files []string
 
 	fileDir, err := os.ReadDir(root)
@@ -233,36 +230,5 @@ func (s *RWSet) IOReadDir(root string, fileSet *RWSet, deepScan *bool) ([]string
 	return files, nil
 }
 
-// ScanDir - принимает начальную папку и сканирует все подпапки
-// для каждой подпапки запускает саму себя, выделяя новый поточек
-func ScanDir(pathDir string, rootDir string, wg *sync.WaitGroup) {
-	defer wg.Done()
-	defer func() {
-		err := recover()
-		if err != nil {
-			entry := err.(*logrus.Entry)
-			logger.Logger.WithFields(logrus.Fields{
-				"dir_root":  rootDir, // рут папка
-				"dir_err":    pathDir,
-				"err_level":   entry.Level,
-				"err_message": entry.Message,
-			}).Error("Ошибка!!! Доступ к папке!!!")
-		}
-	}()
 
-	dirs, err := fscan.IOReadDir(pathDir, fileSet, deepScan)
-	if err != nil {
-		logger.Logger.Panicf("Error reading dirs: %v", err)
-		//logger.Logger.Errorf("Error reading dirs: %v", err)
-		return
-	}
-
-	for _, dir := range dirs {
-		wg.Add(1)
-		atomic.AddInt64(&goProcCounter, 1)
-		sDir := pathDir + "/" + dir
-		go ScanDir(sDir, pathDir)
-	}
-
-}
 
