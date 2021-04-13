@@ -1,0 +1,2 @@
+time="2021-04-13 21:48:27" level=info msg="Problem with reading file: //file1.txt stat //file1.txt: no such file or directory"
+time="2021-04-13 21:48:27" level=info msg="Problem with reading file: //file2.txt stat //file2.txt: no such file or directory"

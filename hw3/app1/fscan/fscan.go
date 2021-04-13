@@ -43,11 +43,10 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/pehks1980/gb_go_best/hw2/app1/logger"
-	"github.com/pehks1980/gb_go_best/hw3/app1/fscan"
 	"github.com/sirupsen/logrus"
 	"hash/crc32"
 	"io"
+	"io/fs"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -74,13 +73,23 @@ type RWSet struct {
 	MM map[string]FileElem
 	// FilesHaveDubs счетчик файлов которые имеют дубли
 	FilesHaveDubs int64
+	// ProcCounter счик процедур запущенных через оп go
+	ProcCounter int64
+	// flag -  учитывать содержимое файла (считать md5)
+	DeepScan bool
+	Logger   *logrus.Logger
+	MockFs   bool
 }
 
 // NewRWSet - конструктор Хештаблицы FileElem
-func NewRWSet() *RWSet {
+func NewRWSet(ds bool, logging *logrus.Logger, mockfs bool) *RWSet {
 	return &RWSet{
 		MM:            map[string]FileElem{},
 		FilesHaveDubs: 0,
+		ProcCounter:   1,
+		DeepScan:      ds,
+		Logger:        logging,
+		MockFs: 	   mockfs,
 	}
 }
 
@@ -114,7 +123,7 @@ func (s *RWSet) Has(nameMM string) bool {
 
 // GetHash вычисление хеш сrc32
 // по значениям размера имени и хеша md5 в случае -ds
-func GetHash(fileSz int64, fileName string, fileHash string) (string, error) {
+func (s *RWSet) GetHash(fileSz int64, fileName string, fileHash string) (string, error) {
 	hashFileNameSize := crc32.NewIEEE()
 	strFileSize := fmt.Sprintf("%d", fileSz)
 	_, _ = hashFileNameSize.Write([]byte(fileName + strFileSize + fileHash))
@@ -125,7 +134,7 @@ func GetHash(fileSz int64, fileName string, fileHash string) (string, error) {
 
 // GetFileMd5Hash - вычисления md5 хеш файла для -ds
 // filePath - имя файла для вычисления его md5
-func GetFileMd5Hash(filePath string) (string, error) {
+func (s *RWSet) GetFileMd5Hash(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return "", err
@@ -134,7 +143,7 @@ func GetFileMd5Hash(filePath string) (string, error) {
 
 	hash := md5.New()
 	if _, err := io.Copy(hash, file); err != nil {
-		logger.Logger.Errorf("Error while calculate md5 hash %v\n", err)
+		s.Logger.Errorf("Error while calculate md5 hash %v\n", err)
 		return "", err
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
@@ -142,38 +151,132 @@ func GetFileMd5Hash(filePath string) (string, error) {
 
 // DeleteDup физическое удаление дупликата
 // dub - полное имя файла под удаление из фс
-func DeleteDup(dub string) error {
+func (s *RWSet) DeleteDup(dub string) error {
 	err := os.Remove("sdfg")
 	if err != nil {
-		logger.Logger.Errorf("Error deleting file: %s : %v", dub, err)
+		s.Logger.Errorf("Error deleting file: %s : %v", dub, err)
 		return err
 	}
 	return nil
+}
+
+// попытка сделать мокинг файловой системы
+// интерфейс для подмены
+type DirReader interface {
+	// читаем выдаем слайс с файлом
+	Readdir() ([]os.DirEntry, error)
+}
+// cтруктура для стандартной работы
+type Dir struct {
+	Path  string
+	Files []os.DirEntry
+	//SubDirs map[string]*Dir
+}
+// структура для мокинговой системы
+type MockDir struct {
+	Path  string
+	Files []MockFileInfo
+	//SubDirs map[string]*MockDir
+}
+// cтруктура для мокинга элементов фс
+type MockFileInfo struct {
+	FileName    string
+	IsDirectory bool
+}
+//методы для подмены элементов фс интерфейса fs.DirEntry
+func (mfi MockFileInfo) IsDir() bool {
+	return mfi.IsDirectory
+}
+
+func (mfi MockFileInfo) Name() string {
+	return mfi.FileName
+}
+
+func (mfi MockFileInfo) Type() fs.FileMode {
+	return fs.ModePerm
+}
+
+func (mfi MockFileInfo) Info() (fs.FileInfo, error) {
+	return nil, nil
+}
+// конструктор элемента фс имеет имя и флаг - папка / файлик
+func NewMockFileInfo(name string, isDir bool) MockFileInfo {
+	return MockFileInfo{
+		FileName:    name,
+		IsDirectory: isDir,
+	}
+}
+
+// мокинг метод для чтения папки фс
+func (md MockDir) Readdir() ([]os.DirEntry, error) {
+	// берет набор []os.DirEntry
+	// и заносит с него в список файлов в зависимости от случая
+
+	files := make([]os.DirEntry, 0, 10)
+	number := 1 // 1- считывает 2 файла и заканчивает работу.
+	// 0 - начинает открывать мнимую папку Dir1 до бесконечности -)
+	if number == 0 {
+		file := NewMockFileInfo("Dir1", true)
+		files = append(files, file)
+		file = NewMockFileInfo("file3.txt", false)
+		files = append(files, file)
+	}
+	if number == 1 {
+		file := NewMockFileInfo("file1.txt", false)
+		files = append(files, file)
+		file = NewMockFileInfo("file2.txt", false)
+		files = append(files, file)
+	}
+
+	return files, nil
+
+}
+// конструкор если хочется создавать структуру Dir так
+func NewDir(path string) Dir {
+	return Dir{Path: path}
+}
+
+// читалка фс стандартным способом
+func (fd Dir) Readdir() ([]os.DirEntry, error) {
+	fileInfos, err := os.ReadDir(fd.Path)
+	if err != nil {
+		return nil, err
+	}
+	return fileInfos, nil
 }
 
 // IOReadDir - сканирование папки и поиск дублей файлов
 // root  - каталог где искать
 // fileSet - указатель на хеш таблицу найденных файлов
 // deepScan - ключ программы делать и учитывать md5 файлов
-func (s *RWSet) IOReadDir(root string, fileSet *RWSet, deepScan *bool) ([]string, error) {
+func (s *RWSet) IOReadDir(root string) ([]string, error) {
 	var files []string
 
-	fileDir, err := os.ReadDir(root)
+	//dir := NewDir(root)
+	//fileDir, err := dir.Readdir()
+
+	// пустой указатель интерфейса
+	var dirIf DirReader
+	// инициализируем структуру и приравниваем указатель интерфейсу (по флагу MockFs)
+	if s.MockFs{
+		dirIf = MockDir{Path: root}
+	}else{
+		dirIf = Dir{Path: root}
+	}
+
+	// делаем чтение методом через указатель интерфейса
+	fileDir, err := dirIf.Readdir()
+
 	if err != nil {
-		logger.Logger.Infof("Problems with Reading dir: %s %v", root, err)
+		s.Logger.Infof("Problems with Reading dir: %s %v", root, err)
 		return files, err
 		//log.Fatal(err)
 	}
 
-	/*fileInfo, err := ioutil.ReadDir(root)
-	if err != nil {
-		return files, err
-	}*/
-
 	for _, file := range fileDir {
 		if file.IsDir() {
 			files = append(files, file.Name())
-			logger.Logger.Infof("Reading dir: %s", file.Name())
+			s.Logger.Infof("Reading dir: %s", file.Name())
 			//fmt.Printf("dir=%s\n", file.Name())
 		} else {
 
@@ -183,33 +286,35 @@ func (s *RWSet) IOReadDir(root string, fileSet *RWSet, deepScan *bool) ([]string
 
 			statFile, err := os.Stat(fullFilePath)
 			if err != nil {
-				logger.Logger.Infof("Problem with reading file: %s %v", fullFilePath, err)
+				s.Logger.Infof("Problem with reading file: %s %v", fullFilePath, err)
 				continue
+
+				//return nil, err
 			}
 			if statFile.IsDir() {
 				continue
 			}
 
-			if *deepScan {
-				fileMd5Hash, _ := GetFileMd5Hash(fullFilePath)
+			if s.DeepScan {
+				fileMd5Hash, err := s.GetFileMd5Hash(fullFilePath)
 				if err != nil {
-					logger.Logger.Infof("Problem with md5: hash %s %v", fullFilePath, err)
+					s.Logger.Infof("Problem with md5: hash %s %v", fullFilePath, err)
 					continue
 				}
-				NameHash, _ = GetHash(statFile.Size(), file.Name(), fileMd5Hash)
+				NameHash, _ = s.GetHash(statFile.Size(), file.Name(), fileMd5Hash)
 			} else {
-				NameHash, _ = GetHash(statFile.Size(), file.Name(), "")
+				NameHash, _ = s.GetHash(statFile.Size(), file.Name(), "")
 			}
 
-			if fileSet.Has(NameHash) {
+			if s.Has(NameHash) {
 				// dublicat
 				// update struct
-				fileSet.Edit(NameHash, fullFilePath)
+				s.Edit(NameHash, fullFilePath)
 			} else {
 				// new element
 				var elemMM *FileElem
-				if *deepScan {
-					fileMd5Hash, _ := GetFileMd5Hash(fullFilePath)
+				if s.DeepScan {
+					fileMd5Hash, _ := s.GetFileMd5Hash(fullFilePath)
 					elemMM = &FileElem{
 						FullPath: fullFilePath,
 						Filesize: statFile.Size(),
@@ -224,8 +329,8 @@ func (s *RWSet) IOReadDir(root string, fileSet *RWSet, deepScan *bool) ([]string
 						DubPaths: nil,
 					}
 				}
-				NameHash, _ := GetHash(statFile.Size(), file.Name(), elemMM.FileHash)
-				fileSet.Add(NameHash, *elemMM)
+				NameHash, _ := s.GetHash(statFile.Size(), file.Name(), elemMM.FileHash)
+				s.Add(NameHash, *elemMM)
 			}
 
 		}
@@ -235,34 +340,33 @@ func (s *RWSet) IOReadDir(root string, fileSet *RWSet, deepScan *bool) ([]string
 
 // ScanDir - принимает начальную папку и сканирует все подпапки
 // для каждой подпапки запускает саму себя, выделяя новый поточек
-func ScanDir(pathDir string, rootDir string, wg *sync.WaitGroup) {
-	defer wg.Done()
+func (s *RWSet) ScanDir(pathDir string, rootDir string) {
+	defer s.Done()
 	defer func() {
 		err := recover()
 		if err != nil {
 			entry := err.(*logrus.Entry)
-			logger.Logger.WithFields(logrus.Fields{
-				"dir_root":  rootDir, // рут папка
-				"dir_err":    pathDir,
+			s.Logger.WithFields(logrus.Fields{
+				"dir_root":    rootDir, // рут папка
+				"dir_err":     pathDir,
 				"err_level":   entry.Level,
 				"err_message": entry.Message,
 			}).Error("Ошибка!!! Доступ к папке!!!")
 		}
 	}()
 
-	dirs, err := fscan.IOReadDir(pathDir, fileSet, deepScan)
+	dirs, err := s.IOReadDir(pathDir)
 	if err != nil {
-		logger.Logger.Panicf("Error reading dirs: %v", err)
+		s.Logger.Panicf("Error reading dirs: %v", err)
 		//logger.Logger.Errorf("Error reading dirs: %v", err)
 		return
 	}
 
 	for _, dir := range dirs {
-		wg.Add(1)
-		atomic.AddInt64(&goProcCounter, 1)
+		s.WaitGroup.Add(1)
+		atomic.AddInt64(&s.ProcCounter, 1)
 		sDir := pathDir + "/" + dir
-		go ScanDir(sDir, pathDir)
+		go s.ScanDir(sDir, pathDir)
 	}
 
 }
-
