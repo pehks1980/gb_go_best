@@ -52,6 +52,11 @@ import (
 	"sync/atomic"
 )
 
+var (
+	// init generator channel as global var (used in mocking fs)
+	PyGenCh = PyGen()
+)
+
 // FileElem is структура найденного файла.
 type FileElem struct {
 	// FullPath полное имя файла (каталог + имя в каталоге).
@@ -175,36 +180,51 @@ type Dir struct {
 // структура для мокинговой системы
 type MockDir struct {
 	Path  string
-	Files []MockFileInfo
+	Files []MockDirEntry
 	//SubDirs map[string]*MockDir
 }
 // cтруктура для мокинга элементов фс
-type MockFileInfo struct {
+type MockDirEntry struct {
 	FileName    string
 	IsDirectory bool
 }
 //методы для подмены элементов фс интерфейса fs.DirEntry
-func (mfi MockFileInfo) IsDir() bool {
+func (mfi MockDirEntry) IsDir() bool {
 	return mfi.IsDirectory
 }
 
-func (mfi MockFileInfo) Name() string {
+func (mfi MockDirEntry) Name() string {
 	return mfi.FileName
 }
 
-func (mfi MockFileInfo) Type() fs.FileMode {
+func (mfi MockDirEntry) Type() fs.FileMode {
 	return fs.ModePerm
 }
 
-func (mfi MockFileInfo) Info() (fs.FileInfo, error) {
+func (mfi MockDirEntry) Info() (fs.FileInfo, error) {
 	return nil, nil
 }
 // конструктор элемента фс имеет имя и флаг - папка / файлик
-func NewMockFileInfo(name string, isDir bool) MockFileInfo {
-	return MockFileInfo{
+func NewMockDirEntry(name string, isDir bool) MockDirEntry {
+	return MockDirEntry{
 		FileName:    name,
 		IsDirectory: isDir,
 	}
+}
+
+// gen function like in python - every time gives one number to channel
+func PyGen() <-chan int {
+	chnl := make(chan int)
+	go func() {
+		gen_arr := []int{1, 1, 2, 2, 3, 3, 3, 3}
+		for _, i := range(gen_arr) {
+			// отдает значение и ждет как демон, следующего раза
+			chnl <- i
+		}
+		 // по завершении уст флаг закрытия канала
+		close(chnl)
+	}()
+	return chnl
 }
 
 // мокинг метод для чтения папки фс
@@ -213,19 +233,27 @@ func (md MockDir) Readdir() ([]os.DirEntry, error) {
 	// и заносит с него в список файлов в зависимости от случая
 
 	files := make([]os.DirEntry, 0, 10)
-	number := 1 // 1- считывает 2 файла и заканчивает работу.
-	// 0 - начинает открывать мнимую папку Dir1 до бесконечности -)
-	if number == 0 {
-		file := NewMockFileInfo("Dir1", true)
-		files = append(files, file)
-		file = NewMockFileInfo("file3.txt", false)
-		files = append(files, file)
-	}
-	if number == 1 {
-		file := NewMockFileInfo("file1.txt", false)
-		files = append(files, file)
-		file = NewMockFileInfo("file2.txt", false)
-		files = append(files, file)
+	// get numbers from generator PyGen via PyGenCh to make mocking catalog according to numbers
+	if number, ok := <- PyGenCh; ok{
+		if number == 1 {
+			file := NewMockDirEntry("Dir1", true)
+			files = append(files, file)
+			file = NewMockDirEntry("Dir2", true)
+			files = append(files, file)
+		}
+		if number == 2 {
+			file := NewMockDirEntry("Dir1", true)
+			files = append(files, file)
+			file = NewMockDirEntry("file2.txt", false)
+			files = append(files, file)
+		}
+		if number == 3 {
+			file := NewMockDirEntry("file1.txt", false)
+			files = append(files, file)
+			file = NewMockDirEntry("file2.txt", false)
+			files = append(files, file)
+
+		}
 	}
 
 	return files, nil
@@ -285,15 +313,27 @@ func (s *RWSet) IOReadDir(root string) ([]string, error) {
 			var NameHash string
 
 			statFile, err := os.Stat(fullFilePath)
+			//we need only File Size from os.Stat
+			var statFileSize int64
+
 			if err != nil {
 				s.Logger.Infof("Problem with reading file: %s %v", fullFilePath, err)
-				continue
-
-				//return nil, err
+				//continue //we go on not skip for the sake of mocking fs
 			}
+
+			// if mocking fs - we setup fixed size of file
+			if s.MockFs {
+				statFileSize = 1024
+			} else {
+				statFileSize = statFile.Size()
+			}
+
+			//additional check it s not a dir
+			/*
 			if statFile.IsDir() {
 				continue
 			}
+			 */
 
 			if s.DeepScan {
 				fileMd5Hash, err := s.GetFileMd5Hash(fullFilePath)
@@ -301,9 +341,9 @@ func (s *RWSet) IOReadDir(root string) ([]string, error) {
 					s.Logger.Infof("Problem with md5: hash %s %v", fullFilePath, err)
 					continue
 				}
-				NameHash, _ = s.GetHash(statFile.Size(), file.Name(), fileMd5Hash)
+				NameHash, _ = s.GetHash(statFileSize, file.Name(), fileMd5Hash)
 			} else {
-				NameHash, _ = s.GetHash(statFile.Size(), file.Name(), "")
+				NameHash, _ = s.GetHash(statFileSize, file.Name(), "")
 			}
 
 			if s.Has(NameHash) {
@@ -317,19 +357,19 @@ func (s *RWSet) IOReadDir(root string) ([]string, error) {
 					fileMd5Hash, _ := s.GetFileMd5Hash(fullFilePath)
 					elemMM = &FileElem{
 						FullPath: fullFilePath,
-						Filesize: statFile.Size(),
+						Filesize: statFileSize,
 						FileHash: fileMd5Hash,
 						DubPaths: nil,
 					}
 				} else {
 					elemMM = &FileElem{
 						FullPath: fullFilePath,
-						Filesize: statFile.Size(),
+						Filesize: statFileSize,
 						FileHash: "",
 						DubPaths: nil,
 					}
 				}
-				NameHash, _ := s.GetHash(statFile.Size(), file.Name(), elemMM.FileHash)
+				NameHash, _ := s.GetHash(statFileSize, file.Name(), elemMM.FileHash)
 				s.Add(NameHash, *elemMM)
 			}
 

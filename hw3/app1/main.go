@@ -42,6 +42,7 @@ var (
 	delDubs           = flag.Bool("del", false, "Delete dub files after scan")
 	interactiveDelete = flag.Bool("i", false, "Interactive mode delete dub files after scan")
 	debug 			  = flag.Bool("debug", false, "debug info")
+	mockFs			  = flag.Bool("mockfs", false, "mock filesystem ")
 	loglevel 		  = flag.Int("lev", 1, "level of logging 3-Debug, 2-Warning, 1-Info")
 
 	// флаг запускает трассировку
@@ -50,6 +51,8 @@ var (
 	// go tool trace trace.out
 	//
 	TraceOn bool = false
+	// mock files system flag
+	//mockFs bool = true
 )
 
 // main основная функция работы утилиты
@@ -90,9 +93,10 @@ func main() {
 		path = append(path, pathArg)
 	}
 
-	Logger.Infof("Program started with pathDir=%s , Deep Scan is %t, Debug=%t, LogLevel=%d", path[0], *deepScan, *debug, *loglevel)
-
-	fileSet := fscan.NewRWSet(*deepScan, Logger, false)
+	Logger.Infof("Program started with pathDir=%s , Deep Scan is %t",path[0], *deepScan)
+	Logger.Infof("Debug=%t, LogLevel=%d, Mocking fs = %t", *debug, *loglevel, *mockFs)
+	// главная структура - инстанс обьекта хеш таблицы поиска дублей
+	fileSet := fscan.NewRWSet(*deepScan, Logger, *mockFs)
 
 	fileSet.WaitGroup.Add(1)
 	go fileSet.ScanDir(path[0], "nil")
