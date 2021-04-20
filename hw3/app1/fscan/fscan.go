@@ -43,18 +43,17 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"github.com/pehks1980/gb_go_best/hw3/app1/mockfs"
 	"github.com/sirupsen/logrus"
 	"hash/crc32"
 	"io"
-	"io/fs"
 	"os"
 	"sync"
 	"sync/atomic"
 )
 
 var (
-	// init generator channel as global var (used in mocking fs)
-	PyGenCh = PyGen()
+
 )
 
 // FileElem is структура найденного файла.
@@ -84,10 +83,12 @@ type RWSet struct {
 	DeepScan bool
 	Logger   *logrus.Logger
 	MockFs   bool
+	//ук на канал генератора папок для mockfs
+	PyGenCh  <-chan int
 }
 
 // NewRWSet - конструктор Хештаблицы FileElem
-func NewRWSet(ds bool, logging *logrus.Logger, mockfs bool) *RWSet {
+func NewRWSet(ds bool, logging *logrus.Logger, mockfs bool, pygench <-chan int) *RWSet {
 	return &RWSet{
 		MM:            map[string]FileElem{},
 		FilesHaveDubs: 0,
@@ -95,6 +96,7 @@ func NewRWSet(ds bool, logging *logrus.Logger, mockfs bool) *RWSet {
 		DeepScan:      ds,
 		Logger:        logging,
 		MockFs: 	   mockfs,
+		PyGenCh:	   pygench,
 	}
 }
 
@@ -165,113 +167,6 @@ func (s *RWSet) DeleteDup(dub string) error {
 	return nil
 }
 
-// попытка сделать мокинг файловой системы
-// интерфейс для подмены
-type DirReader interface {
-	// читаем выдаем слайс с файлом
-	Readdir() ([]os.DirEntry, error)
-}
-// cтруктура для стандартной работы
-type Dir struct {
-	Path  string
-	Files []os.DirEntry
-	//SubDirs map[string]*Dir
-}
-// структура для мокинговой системы
-type MockDir struct {
-	Path  string
-	Files []MockDirEntry
-	//SubDirs map[string]*MockDir
-}
-// cтруктура для мокинга элементов фс
-type MockDirEntry struct {
-	FileName    string
-	IsDirectory bool
-}
-//методы для подмены элементов фс интерфейса fs.DirEntry
-func (mfi MockDirEntry) IsDir() bool {
-	return mfi.IsDirectory
-}
-
-func (mfi MockDirEntry) Name() string {
-	return mfi.FileName
-}
-
-func (mfi MockDirEntry) Type() fs.FileMode {
-	return fs.ModePerm
-}
-
-func (mfi MockDirEntry) Info() (fs.FileInfo, error) {
-	return nil, nil
-}
-// конструктор элемента фс имеет имя и флаг - папка / файлик
-func NewMockDirEntry(name string, isDir bool) MockDirEntry {
-	return MockDirEntry{
-		FileName:    name,
-		IsDirectory: isDir,
-	}
-}
-
-// gen function like in python - every time gives one number to channel
-func PyGen() <-chan int {
-	chnl := make(chan int)
-	go func() {
-		gen_arr := []int{1, 1, 2, 2, 3, 3, 3, 3}
-		for _, i := range(gen_arr) {
-			// отдает значение и ждет как демон, следующего раза
-			chnl <- i
-		}
-		 // по завершении уст флаг закрытия канала
-		close(chnl)
-	}()
-	return chnl
-}
-
-// мокинг метод для чтения папки фс
-func (md MockDir) Readdir() ([]os.DirEntry, error) {
-	// берет набор []os.DirEntry
-	// и заносит с него в список файлов в зависимости от случая
-
-	files := make([]os.DirEntry, 0, 10)
-	// get numbers from generator PyGen via PyGenCh to make mocking catalog according to numbers
-	if number, ok := <- PyGenCh; ok{
-		if number == 1 {
-			file := NewMockDirEntry("Dir1", true)
-			files = append(files, file)
-			file = NewMockDirEntry("Dir2", true)
-			files = append(files, file)
-		}
-		if number == 2 {
-			file := NewMockDirEntry("Dir1", true)
-			files = append(files, file)
-			file = NewMockDirEntry("file2.txt", false)
-			files = append(files, file)
-		}
-		if number == 3 {
-			file := NewMockDirEntry("file1.txt", false)
-			files = append(files, file)
-			file = NewMockDirEntry("file2.txt", false)
-			files = append(files, file)
-
-		}
-	}
-
-	return files, nil
-
-}
-// конструкор если хочется создавать структуру Dir так
-func NewDir(path string) Dir {
-	return Dir{Path: path}
-}
-
-// читалка фс стандартным способом
-func (fd Dir) Readdir() ([]os.DirEntry, error) {
-	fileInfos, err := os.ReadDir(fd.Path)
-	if err != nil {
-		return nil, err
-	}
-	return fileInfos, nil
-}
 
 // IOReadDir - сканирование папки и поиск дублей файлов
 // root  - каталог где искать
@@ -284,16 +179,22 @@ func (s *RWSet) IOReadDir(root string) ([]string, error) {
 	//fileDir, err := dir.Readdir()
 
 	// пустой указатель интерфейса
-	var dirIf DirReader
+	var dirReaderIf mockfs.DirReader
 	// инициализируем структуру и приравниваем указатель интерфейсу (по флагу MockFs)
 	if s.MockFs{
-		dirIf = MockDir{Path: root}
-	}else{
-		dirIf = Dir{Path: root}
-	}
+		//мокинг фс
+		dirReaderIf = new(mockfs.MockDir)
+		// init generator channel as global var (used in mocking fs)
 
+
+	}else{
+		//стандарт фс
+		dirReaderIf = new(mockfs.Dir)
+	}
+	//инициализируем обернутую интерфейсом структуру
+	dirReaderIf = dirReaderIf.New(root, s.PyGenCh)// неявно передается Mockdir под интерфейсом DirReaderif= self (как доп параметр)
 	// делаем чтение методом через указатель интерфейса
-	fileDir, err := dirIf.Readdir()
+	fileDir, err := dirReaderIf.Readdir()
 
 	if err != nil {
 		s.Logger.Infof("Problems with Reading dir: %s %v", root, err)

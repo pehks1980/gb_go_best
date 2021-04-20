@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/pehks1980/gb_go_best/hw3/app1/fscan"
 	logger "github.com/pehks1980/gb_go_best/hw3/app1/logger"
+	"github.com/pehks1980/gb_go_best/hw3/app1/mockfs"
+
 	//"log"
 	"os"
 	"runtime/trace"
@@ -95,8 +97,10 @@ func main() {
 
 	Logger.Infof("Program started with pathDir=%s , Deep Scan is %t",path[0], *deepScan)
 	Logger.Infof("Debug=%t, LogLevel=%d, Mocking fs = %t", *debug, *loglevel, *mockFs)
+	//python like generator func to use it with mocking fs gives channel with sequences of int numbers
+	PyGenCh := mockfs.PyGen()
 	// главная структура - инстанс обьекта хеш таблицы поиска дублей
-	fileSet := fscan.NewRWSet(*deepScan, Logger, *mockFs)
+	fileSet := fscan.NewRWSet(*deepScan, Logger, *mockFs, PyGenCh)
 
 	fileSet.WaitGroup.Add(1)
 	go fileSet.ScanDir(path[0], "nil")
