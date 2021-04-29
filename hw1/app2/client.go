@@ -1,13 +1,12 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
 	"log"
 	"net"
 	"sync"
 	"time"
-
-	"bufio"
-	"fmt"
 )
 
 const addr = "127.0.0.1:5433"

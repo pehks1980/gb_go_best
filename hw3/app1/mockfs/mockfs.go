@@ -4,28 +4,29 @@ import (
 	"io/fs"
 	"os"
 )
+
 // попытка сделать мокинг файловой системы
 // интерфейс для подмены
 type DirReader interface {
 	// читаем выдаем слайс с файлом
 	Readdir() ([]os.DirEntry, error)
-	New(path string, pygench <- chan int) DirReader
+	New(path string, pygench <-chan int) DirReader
 }
 
 // cтруктура для стандартной работы
 type Dir struct {
 	Path  string
 	Files []os.DirEntry
-	//SubDirs map[string]*Dir
+	// SubDirs map[string]*Dir
 }
 
 // структура для мокинговой системы
 type MockDir struct {
 	Path    string
 	Files   []MockDirEntry
-	PyGenCh <-chan int //указатель на канал из main переходит в обьект s а потом сюда
+	PyGenCh <-chan int // указатель на канал из main переходит в обьект s а потом сюда
 
-	//SubDirs map[string]*MockDir
+	// SubDirs map[string]*MockDir
 }
 
 // cтруктура для мокинга элементов фс
@@ -33,7 +34,8 @@ type MockDirEntry struct {
 	FileName    string
 	IsDirectory bool
 }
-//методы для подмены элементов фс интерфейса fs.DirEntry
+
+// методы для подмены элементов фс интерфейса fs.DirEntry
 func (mfi MockDirEntry) IsDir() bool {
 	return mfi.IsDirectory
 }
@@ -49,6 +51,7 @@ func (mfi MockDirEntry) Type() fs.FileMode {
 func (mfi MockDirEntry) Info() (fs.FileInfo, error) {
 	return nil, nil
 }
+
 // конструктор элемента фс имеет имя и флаг - папка / файлик
 func NewMockDirEntry(name string, isDir bool) MockDirEntry {
 	return MockDirEntry{
@@ -57,8 +60,8 @@ func NewMockDirEntry(name string, isDir bool) MockDirEntry {
 	}
 }
 
-func (md MockDir) New(path string, pygench <- chan int) DirReader {
-	return MockDir{Path: path,PyGenCh: pygench}//NewMockDir(path)
+func (md MockDir) New(path string, pygench <-chan int) DirReader {
+	return MockDir{Path: path, PyGenCh: pygench} // NewMockDir(path)
 }
 
 func NewMockDir(path string) MockDir {
@@ -69,8 +72,8 @@ func NewMockDir(path string) MockDir {
 func PyGen() <-chan int {
 	chnl := make(chan int)
 	go func() {
-		gen_arr := []int{1, 1, 2, 2, 3, 3, 3, 3}
-		for _, i := range(gen_arr) {
+		genarr := []int{1, 1, 2, 2, 3, 3, 3, 3}
+		for _, i := range genarr {
 			// отдает значение и ждет как демон, следующего раза
 			chnl <- i
 		}
@@ -87,17 +90,17 @@ func (md MockDir) Readdir() ([]os.DirEntry, error) {
 
 	files := make([]os.DirEntry, 0, 10)
 	// get numbers from generator PyGen via PyGenCh to make mocking catalog according to numbers
-	if number, ok := <- md.PyGenCh; ok{
+	if number, ok := <-md.PyGenCh; ok {
 		if number == 1 {
 			file := NewMockDirEntry("Dir1", true)
 			files = append(files, file)
-			file = NewMockDirEntry("Dir2", true)
+			file = NewMockDirEntry("Dir2", true  )
 			files = append(files, file)
 		}
 		if number == 2 {
 			file := NewMockDirEntry("Dir1", true)
 			files = append(files, file)
-			file = NewMockDirEntry("file2.txt", false)
+			file = NewMockDirEntry("file2.txt", false  )
 			files = append(files, file)
 		}
 		if number == 3 {
@@ -105,20 +108,19 @@ func (md MockDir) Readdir() ([]os.DirEntry, error) {
 			files = append(files, file)
 			file = NewMockDirEntry("file2.txt", false)
 			files = append(files, file)
-
 		}
 	}
 
 	return files, nil
-
 }
+
 // конструкор если хочется создавать структуру Dir так
 func NewDir(path string) Dir {
 	return Dir{Path: path}
 }
 
-func (fd Dir) New (path string, pygench <- chan int) DirReader {
-	return Dir{Path: path}//NewDir(path)
+func (fd Dir) New(path string, pygench <-chan int) DirReader {
+	return Dir{Path: path} // NewDir(path)
 }
 
 // читалка фс стандартным способом

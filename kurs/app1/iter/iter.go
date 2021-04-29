@@ -1,0 +1,145 @@
+package iter
+
+import (
+	"bufio"
+	"fmt"
+	"github.com/csimplestring/go-csv/detector"
+	"io"
+	"log"
+	"os"
+	"strings"
+)
+
+// ReadlinesScanner is an iterator that returns one line of a file at a time.
+func ReadlinesScanner(path string) (<-chan string, error) {
+	file, err := os.Open(path)
+
+	if err != nil {
+		return nil, err
+	}
+
+	scanner := bufio.NewScanner(file)
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	// prepare buffer for the scanner (per one line)
+	buf := make([]byte, 0, 64*1024) //64k
+	scanner.Buffer(buf, 1024*1024)  //1M max
+
+	chnl := make(chan string)
+	go func() {
+		// Не забываем закрыть файл при выходе из функции
+		defer func() {
+			err := file.Close()
+			if err != nil {
+				log.Printf("cant close file: %v", err)
+			}
+		}()
+
+		for scanner.Scan() {
+			chnl <- scanner.Text()
+		}
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintf(os.Stderr, "error scanning a string: %v\n", err)
+		}
+		close(chnl)
+	}()
+
+	return chnl, nil
+}
+
+func CheckDelimiters(path string) []string {
+	detector := detector.New()
+
+	file, err := os.OpenFile(path, os.O_RDONLY, os.ModePerm)
+	if err != nil {
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	delimiters := detector.DetectDelimiter(file, '"')
+	fmt.Println(delimiters)
+	return delimiters
+}
+
+func CheckEndLineDelimiters(path string) (byte, error) {
+	file, err := os.OpenFile(path, os.O_RDONLY, os.ModePerm)
+	if err != nil {
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	buf := make([]byte, 400)
+	if _, err := io.ReadFull(file, buf); err != nil {
+		//log.Printf("error opening file %v", err)
+	}
+
+	out := string(buf)
+
+	//fmt.Println(out)
+
+	// -1 means no such symbol
+	del_idx_r := strings.Index(out, "\r")
+	del_idx_n := strings.Index(out, "\n")
+
+	if del_idx_r == -1 && del_idx_n == 1 {
+		// coudnot find delimeter error not \n nor \r
+		err := fmt.Errorf(" coudnt find \r \n in file this is not good!")
+		return 0, err
+	}
+
+	if del_idx_n != -1 && del_idx_r == -1 {
+		//only r
+		return '\n', nil
+	}
+
+	if del_idx_n == -1 && del_idx_r != -1 {
+		//only r
+		return '\r', nil
+	}
+
+	//both /n/r
+	return '\n', nil
+
+}
+
+func ReadLinesReadString(fn string, delim byte) (<-chan string, error) {
+	//fmt.Println("readFileWithReadString")
+
+	file, err := os.Open(fn)
+	if err != nil {
+		return nil, err
+	}
+
+	// Start reading from the file with a reader.
+	reader := bufio.NewReader(file)
+
+	chnl := make(chan string)
+	go func() {
+		// Не забываем закрыть файл при выходе из функции
+		defer func() {
+			err := file.Close()
+			if err != nil {
+				log.Printf("cant close file: %v", err)
+			}
+		}()
+
+		var line string
+		for {
+
+			line, err = reader.ReadString(delim)
+			if err != nil || err == io.EOF {
+				break
+			}
+			//fmt.Printf(" > Read %d characters\n line=%s", len(line), line)
+			chnl <- line
+		}
+
+		if err != io.EOF {
+			fmt.Printf(" > Failed with error: %v\n", err)
+		}
+		close(chnl)
+	}()
+
+	return chnl, nil
+}

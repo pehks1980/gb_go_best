@@ -11,6 +11,7 @@ import (
 	"os"
 	"runtime/trace"
 )
+
 /*
 Добавьте в программу для поиска дубликатов, разработанную в рамках проектной работы на предыдущем модуле логи.
 Необходимо использовать пакет zap или logrus.
@@ -22,7 +23,7 @@ import (
 Вставить вызов panic() в участке коде, в котором осуществляется переход в поддиректорию; удостовериться,
 что по логам можно локализовать при каком именно переходе в какую директорию сработала паника.
 
- */
+*/
 
 /*
 урок 3 тестирование
@@ -36,16 +37,16 @@ import (
 
  4 Делаем отдельно 1-2 интеграционных теста, запускаемых с флагом -integration -
 не понял что к чему, в методе ничего нет
- */
+*/
 
 var (
 	// флаги
 	deepScan          = flag.Bool("ds", false, "Deep scan check - check contents of the dub files")
 	delDubs           = flag.Bool("del", false, "Delete dub files after scan")
 	interactiveDelete = flag.Bool("i", false, "Interactive mode delete dub files after scan")
-	debug 			  = flag.Bool("debug", false, "debug info")
-	mockFs			  = flag.Bool("mockfs", false, "mock filesystem ")
-	loglevel 		  = flag.Int("lev", 1, "level of logging 3-Debug, 2-Warning, 1-Info")
+	debug             = flag.Bool("debug", false, "debug info")
+	mockFs            = flag.Bool("mockfs", false, "mock filesystem ")
+	loglevel          = flag.Int("lev", 1, "level of logging 3-Debug, 2-Warning, 1-Info")
 
 	// флаг запускает трассировку
 	// cделать и поглядеть трассировку:
@@ -54,7 +55,7 @@ var (
 	//
 	TraceOn bool = false
 	// mock files system flag
-	//mockFs bool = true
+	// mockFs bool = true
 )
 
 // main основная функция работы утилиты
@@ -95,7 +96,7 @@ func main() {
 		path = append(path, pathArg)
 	}
 
-	Logger.Infof("Program started with pathDir=%s , Deep Scan is %t",path[0], *deepScan)
+	Logger.Infof("Program started with pathDir=%s , Deep Scan is %t", path[0], *deepScan)
 	Logger.Infof("Debug=%t, LogLevel=%d, Mocking fs = %t", *debug, *loglevel, *mockFs)
 	//python like generator func to use it with mocking fs gives channel with sequences of int numbers
 	PyGenCh := mockfs.PyGen()

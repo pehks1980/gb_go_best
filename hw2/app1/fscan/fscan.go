@@ -229,6 +229,3 @@ func IOReadDir(root string, fileSet *RWSet, deepScan *bool) ([]string, error) {
 	}
 	return files, nil
 }
-
-
-

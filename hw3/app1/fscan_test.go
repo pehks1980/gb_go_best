@@ -5,8 +5,8 @@ import (
 	_ "fmt"
 	"github.com/pehks1980/gb_go_best/hw3/app1/fscan"
 	logger "github.com/pehks1980/gb_go_best/hw3/app1/logger"
+	"github.com/pehks1980/gb_go_best/hw3/app1/mockfs"
 	"github.com/stretchr/testify/assert"
-	_ "github.com/stretchr/testify/assert"
 	"os"
 	"testing"
 )
@@ -14,11 +14,12 @@ import (
 //////////////////////////// TestIOReadDir test func IOReadDir for error
 func TestIOReadDir(t *testing.T) {
 	Logger := logger.InitLoggers("log_test.txt", true, 3)
-	fileSet := fscan.NewRWSet(false, Logger, false)
+	PyGenCh := mockfs.PyGen()
+	fileSet := fscan.NewRWSet(false, Logger, false, PyGenCh)
 
 	_, err := fileSet.IOReadDir("/home")
 	if assert.Error(t, err) {
-		serr := fmt.Sprintf("err: %v",err)
+		serr := fmt.Sprintf("err: %v", err)
 		assert.Contains(t, serr, "not permitted")
 	}
 
@@ -29,7 +30,8 @@ func TestIOReadDir(t *testing.T) {
 ///////////////////////////// TestScanDir test main func scandir run see log
 func TestScanDir(t *testing.T) {
 	Logger := logger.InitLoggers("log_run_test.txt", true, 3)
-	fileSet := fscan.NewRWSet(false, Logger, false)
+	PyGenCh := mockfs.PyGen()
+	fileSet := fscan.NewRWSet(false, Logger, false, PyGenCh)
 
 	fileSet.WaitGroup.Add(1)
 	go fileSet.ScanDir("/Users/user", "nil")
@@ -42,7 +44,8 @@ func TestScanDir(t *testing.T) {
 ///////////////////////////// TestMockScanDir test mocks FS see log
 func TestMockScanDir(t *testing.T) {
 	Logger := logger.InitLoggers("log_mock_test.txt", true, 3)
-	fileSet := fscan.NewRWSet(false, Logger, true)
+	PyGenCh := mockfs.PyGen()
+	fileSet := fscan.NewRWSet(false, Logger, true, PyGenCh)
 
 	fileSet.WaitGroup.Add(1)
 	go fileSet.ScanDir("/", "nil")
@@ -55,7 +58,8 @@ func TestMockScanDir(t *testing.T) {
 ///////////////////////////// test fileSet adding editing having
 func TestHashTable(t *testing.T) {
 	Logger := logger.InitLoggers("log_hash_test.txt", true, 3)
-	fileSet := fscan.NewRWSet(false, Logger, false)
+	PyGenCh := mockfs.PyGen()
+	fileSet := fscan.NewRWSet(false, Logger, false, PyGenCh)
 	// add one member
 
 	elemMM := &fscan.FileElem{
@@ -90,12 +94,13 @@ func TestHashTable(t *testing.T) {
 func TestGetFileMd5Hash(t *testing.T) {
 
 	Logger := logger.InitLoggers("log_md5_test.txt", true, 3)
-	fileSet := fscan.NewRWSet(false, Logger, false)
+	PyGenCh := mockfs.PyGen()
+	fileSet := fscan.NewRWSet(false, Logger, false, PyGenCh)
 
 	_, err := fileSet.GetFileMd5Hash("aaa")
 
 	if assert.Error(t, err) {
-		serr := fmt.Sprintf("err: %v",err)
+		serr := fmt.Sprintf("err: %v", err)
 		assert.Contains(t, serr, "no such file or directory")
 	}
 	_ = os.Remove("log_md5_test.txt")

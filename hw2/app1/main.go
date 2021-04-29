@@ -12,6 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 )
+
 /*
 Добавьте в программу для поиска дубликатов, разработанную в рамках проектной работы на предыдущем модуле логи.
 Необходимо использовать пакет zap или logrus.
@@ -23,14 +24,14 @@ import (
 Вставить вызов panic() в участке коде, в котором осуществляется переход в поддиректорию; удостовериться,
 что по логам можно локализовать при каком именно переходе в какую директорию сработала паника.
 
- */
+*/
 var (
 	// флаги
 	deepScan          = flag.Bool("ds", false, "Deep scan check - check contents of the dub files")
 	delDubs           = flag.Bool("del", false, "Delete dub files after scan")
 	interactiveDelete = flag.Bool("i", false, "Interactive mode delete dub files after scan")
-	debug 			  = flag.Bool("debug", false, "debug info")
-	loglevel 		  = flag.Int("lev", 1, "level of logging 3-Debug, 2-Warning, 1-Info")
+	debug             = flag.Bool("debug", false, "debug info")
+	loglevel          = flag.Int("lev", 1, "level of logging 3-Debug, 2-Warning, 1-Info")
 	// waitgroup
 	wg = sync.WaitGroup{}
 	// хештаблица структур файлов
@@ -193,8 +194,8 @@ func ScanDir(pathDir string, rootDir string) {
 		if err != nil {
 			entry := err.(*logrus.Entry)
 			logger.Logger.WithFields(logrus.Fields{
-				"dir_root":  rootDir, // рут папка
-				"dir_err":    pathDir,
+				"dir_root":    rootDir, // рут папка
+				"dir_err":     pathDir,
 				"err_level":   entry.Level,
 				"err_message": entry.Message,
 			}).Error("Ошибка!!! Доступ к папке!!!")

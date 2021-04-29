@@ -45,6 +45,8 @@ import (
 	"fmt"
 	"github.com/pehks1980/gb_go_best/hw3/app1/mockfs"
 	"github.com/sirupsen/logrus"
+
+	// "github.com/sirupsen/logrus"
 	"hash/crc32"
 	"io"
 	"os"
@@ -52,9 +54,7 @@ import (
 	"sync/atomic"
 )
 
-var (
-
-)
+var ()
 
 // FileElem is структура найденного файла.
 type FileElem struct {
@@ -84,7 +84,7 @@ type RWSet struct {
 	Logger   *logrus.Logger
 	MockFs   bool
 	//ук на канал генератора папок для mockfs
-	PyGenCh  <-chan int
+	PyGenCh <-chan int
 }
 
 // NewRWSet - конструктор Хештаблицы FileElem
@@ -95,8 +95,8 @@ func NewRWSet(ds bool, logging *logrus.Logger, mockfs bool, pygench <-chan int) 
 		ProcCounter:   1,
 		DeepScan:      ds,
 		Logger:        logging,
-		MockFs: 	   mockfs,
-		PyGenCh:	   pygench,
+		MockFs:        mockfs,
+		PyGenCh:       pygench,
 	}
 }
 
@@ -167,7 +167,6 @@ func (s *RWSet) DeleteDup(dub string) error {
 	return nil
 }
 
-
 // IOReadDir - сканирование папки и поиск дублей файлов
 // root  - каталог где искать
 // fileSet - указатель на хеш таблицу найденных файлов
@@ -181,18 +180,17 @@ func (s *RWSet) IOReadDir(root string) ([]string, error) {
 	// пустой указатель интерфейса
 	var dirReaderIf mockfs.DirReader
 	// инициализируем структуру и приравниваем указатель интерфейсу (по флагу MockFs)
-	if s.MockFs{
+	if s.MockFs {
 		//мокинг фс
 		dirReaderIf = new(mockfs.MockDir)
 		// init generator channel as global var (used in mocking fs)
 
-
-	}else{
+	} else {
 		//стандарт фс
 		dirReaderIf = new(mockfs.Dir)
 	}
 	//инициализируем обернутую интерфейсом структуру
-	dirReaderIf = dirReaderIf.New(root, s.PyGenCh)// неявно передается Mockdir под интерфейсом DirReaderif= self (как доп параметр)
+	dirReaderIf = dirReaderIf.New(root, s.PyGenCh) // неявно передается Mockdir под интерфейсом DirReaderif= self (как доп параметр)
 	// делаем чтение методом через указатель интерфейса
 	fileDir, err := dirReaderIf.Readdir()
 
@@ -231,10 +229,10 @@ func (s *RWSet) IOReadDir(root string) ([]string, error) {
 
 			//additional check it s not a dir
 			/*
-			if statFile.IsDir() {
-				continue
-			}
-			 */
+				if statFile.IsDir() {
+					continue
+				}
+			*/
 
 			if s.DeepScan {
 				fileMd5Hash, err := s.GetFileMd5Hash(fullFilePath)
