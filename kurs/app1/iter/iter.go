@@ -48,6 +48,7 @@ func ReadlinesScanner(path string) (<-chan string, error) {
 	return chnl, nil
 }
 
+// Проверка на то какой разделитель будет в csv файле ;,
 func CheckDelimiters(path string) []string {
 	detector := detector.New()
 
@@ -62,6 +63,7 @@ func CheckDelimiters(path string) []string {
 	return delimiters
 }
 
+// собственный поиск конца строки в файле (умный)
 func CheckEndLineDelimiters(path string) (byte, error) {
 	file, err := os.OpenFile(path, os.O_RDONLY, os.ModePerm)
 	if err != nil {
@@ -98,11 +100,12 @@ func CheckEndLineDelimiters(path string) (byte, error) {
 		return '\r', nil
 	}
 
-	//both /n/r
+	//both \n\r
 	return '\n', nil
 
 }
-
+// чтение строки файла путем readstring (можно указать признак конца строки)
+// считанная строка отправляется в канал
 func ReadLinesReadString(fn string, delim byte) (<-chan string, error) {
 	//fmt.Println("readFileWithReadString")
 

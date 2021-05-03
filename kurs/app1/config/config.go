@@ -7,11 +7,10 @@ import (
 )
 
 type Config struct {
-	Port string `envconfig:"SERVICE_PORT" required:"true"`
-	Host string `envconfig:"SERVICE_HOST" required:"true"`
 	Timeout int `envconfig:"TIMEOUT" required:"true"`
 }
 
+// New cоздание конфига из файла .env
 func New(cfgFile string) (*Config, error) {
 	err := godotenv.Load(cfgFile)
 	if err != nil {

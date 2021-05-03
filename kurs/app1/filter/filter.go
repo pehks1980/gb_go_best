@@ -6,37 +6,42 @@ import (
 	"strings"
 )
 
-type FilterIf interface {
-	Filter() (map[string]string, error)
+type IFFilter interface {
+	New(args string, fileCols []string, flgCols []string) (*Filter, error)
+	Filter(filerow []string) (string, error)
+}
+
+type Parse interface {
+	ParseHeading(fileCols, flgCols []string) (map[string]int, map[string]int)
+	ParseCondition(cmd []string, colsMask map[string]int) (*Condition, error)
 }
 
 type base string
 
 const (
-	OP_E   base = "="
-	OP_M   base = ">"
-	OP_L   base = "<"
-	OP_ME  base = ">="
-	OP_LE  base = "<="
-	OP_OR  base = "OR"
-	OP_AND base = "AND"
-	OP_XOR base = "XOR"
+	OpE   base = "="
+	OpNe  base = "!="
+	OpM   base = ">"
+	OpL   base = "<"
+	OpMe  base = ">="
+	OpLe  base = "<="
+	OpOr  base = "OR"
+	OpAnd base = "AND"
+	OpXor base = "XOR"
 )
 
-// условие из кс
+// Condition условие из кс
 // column_name OP value [AND/OR column_name OP value] ...
 // continent=’Asia’ AND date>’2020-04-14’
-// todo make recursive condition setup and test (check)
-// todo make no New filter for every row.(only setup filtercondition)
 type Condition struct {
-	colname    string
-	oper       base
-	value      string
-	nextcond   *Condition
-	nextcondop base
+	Colname    string
+	Oper       base
+	Value      string
+	Nextcond   *Condition
+	Nextcondop base
 }
 
-// filter object
+// Filter filter object
 type Filter struct {
 	// query parsed
 	Cond *Condition
@@ -44,25 +49,29 @@ type Filter struct {
 	ColsMask map[string]int
 	// map of cols idx as per original order
 	ColsIdx map[string]int
+	// iteract via interface
+	Parse Parse
 }
 
 func (fl *Filter) New(args string, fileCols []string, flgCols []string) (*Filter, error) {
 	return NewFilter(args, fileCols, flgCols)
 }
 
-// инициализация структуры - установление структуры - condition - условия отбора
+// NewFilter инициализация структуры - установление структуры - condition - условия отбора
 func NewFilter(args string, fileCols, flgCols []string) (*Filter, error) {
-	// todo init
 	filter := new(Filter)
 
-	colsMask, colsIdx := filter.ParseHeading(fileCols, flgCols)
+	filter.Parse = filter
+
+	colsMask, colsIdx := filter.Parse.ParseHeading(fileCols, flgCols)
 
 	// cmd := strings.Split(args, " ")
-	// special split doesnot split in doulble quotes
+
+	// special split doesn't split in double quotes
 	r := regexp.MustCompile(`[^\s"']+|"[^"]*"`)
 	cmd := r.FindAllString(args, -1)
 
-	cond, err := filter.ParseCondition(cmd, colsMask) //use colsmask just to validate col_name in user query
+	cond, err := filter.Parse.ParseCondition(cmd, colsMask) //use colsmask just to validate col_name in user query
 	if err != nil {
 		return nil, err
 	}
@@ -72,11 +81,10 @@ func NewFilter(args string, fileCols, flgCols []string) (*Filter, error) {
 		ColsMask: colsMask,
 		ColsIdx:  colsIdx,
 		Cond:     cond,
-		//wg:              new(sync.WaitGroup),
 	}, nil
 }
 
-// parse flgCols and FileCols make maps for them
+// ParseHeading parse flgCols and FileCols make maps for them
 // 1)colsMask - map of cols which is user specified in flgCols
 // 2)colsIdx - map of original index of columns as per it is in file (to restore original order in output)
 func (fl *Filter) ParseHeading(fileCols, flgCols []string) (map[string]int, map[string]int) {
@@ -113,19 +121,21 @@ func (fl *Filter) ParseCondition(cmd []string, colsMask map[string]int) (*Condit
 	// first check column_name
 	if _, ok := colsMask[cmd[0]]; ok {
 		//column is ok
-		cond.colname = cmd[0]
+		cond.Colname = cmd[0]
 		//now check OP
 		switch cmd[1] {
 		case "=":
-			cond.oper = OP_E
+			cond.Oper = OpE
+		case "!=":
+			cond.Oper = OpNe
 		case "<":
-			cond.oper = OP_L
+			cond.Oper = OpL
 		case ">":
-			cond.oper = OP_M
+			cond.Oper = OpM
 		case "<=":
-			cond.oper = OP_LE
+			cond.Oper = OpLe
 		case ">=":
-			cond.oper = OP_ME
+			cond.Oper = OpMe
 		default:
 			err := fmt.Errorf("operand %s not found", cmd[1])
 			return nil, err
@@ -133,25 +143,25 @@ func (fl *Filter) ParseCondition(cmd []string, colsMask map[string]int) (*Condit
 		// operand ok
 		// now check value
 		//if we have qoutes remove them
-		cond.value = strings.Trim(cmd[2], "\"")
+		cond.Value = strings.Trim(cmd[2], "\"")
 
 		// check if we have 4th member AND OR link b/w several conditions
 		if len(cmd) > 4 {
 			// check link b/w logical sets
 			switch cmd[3] {
 			case "AND":
-				cond.nextcondop = OP_AND
+				cond.Nextcondop = OpAnd
 			case "OR":
-				cond.nextcondop = OP_OR
+				cond.Nextcondop = OpOr
 			case "XOR":
-				cond.oper = OP_XOR
+				cond.Nextcondop = OpXor
 			default:
 				err := fmt.Errorf("operand %s not found", cmd[3])
 				return nil, err
 			}
 			//call it recursively till we get to end of all args each time we move by 4 positions in args - to next set
 			var err error
-			cond.nextcond, err = fl.ParseCondition(cmd[4:], colsMask)
+			cond.Nextcond, err = fl.ParseCondition(cmd[4:], colsMask)
 			if err != nil {
 				return nil, err
 			}
@@ -168,30 +178,34 @@ func (fl *Filter) ParseCondition(cmd []string, colsMask map[string]int) (*Condit
 	return cond, nil
 }
 
-// check one logical set like 'lla = 123' OR...
+// Check check one logical set like 'lla = 123' OR...
 func (fl *Filter) Check(condition *Condition, cols map[string]string) bool {
 
-	if val, ok := cols[condition.colname]; ok {
+	if val, ok := cols[condition.Colname]; ok {
 		val = strings.Trim(val, "\"")
-		switch condition.oper {
-		case OP_E:
-			if val == condition.value {
+		switch condition.Oper {
+		case OpE:
+			if val == condition.Value {
 				return true
 			}
-		case OP_M:
-			if val > condition.value {
+		case OpNe:
+			if val != condition.Value {
 				return true
 			}
-		case OP_L:
-			if val < condition.value {
+		case OpM:
+			if val > condition.Value {
 				return true
 			}
-		case OP_ME:
-			if val >= condition.value {
+		case OpL:
+			if val < condition.Value {
 				return true
 			}
-		case OP_LE:
-			if val <= condition.value {
+		case OpMe:
+			if val >= condition.Value {
+				return true
+			}
+		case OpLe:
+			if val <= condition.Value {
 				return true
 			}
 		default:
@@ -203,36 +217,40 @@ func (fl *Filter) Check(condition *Condition, cols map[string]string) bool {
 	return false
 }
 
-// метод структуры - проверка и отбор данных берет мапу Cols и выдает такую же мапу выходных данных
+// Filter метод структуры - проверка и отбор данных берет мапу Cols и выдает такую же мапу выходных данных
 func (fl *Filter) Filter(filerow []string) (string, error) {
 	// process data which is
 	// map of key - col name: col val in the row
 	cols := make(map[string]string)
 
-	for col, _ := range fl.ColsMask {
+	for col := range fl.ColsMask {
 		//build up row to check against conditions
 		cols[col] = filerow[fl.ColsIdx[col]]
 	}
 	//cols is map of 'col name: col val' in the one current row
 	condition := fl.Cond // start
-	//initial
+	//initial value for condition check
 	var res = false
-	var prev_res = false
-	var prev_nextcondop = ""
+	var prevRes = false
+	var prevNextcondop = ""
 	// evaluate through all conditions linked in Cond struct
 	for condition != nil {
 		res = fl.Check(condition, cols)
-		switch prev_nextcondop {
+		switch prevNextcondop {
 		case "AND":
-			res = prev_res && res
+			res = prevRes && res
 		case "OR":
-			res = prev_res || res
+			res = prevRes || res
 		case "XOR":
-			res = prev_res != res
+			if prevRes != res {
+				res = true
+			} else {
+				res = false
+			}
 		}
-		prev_res = res
-		prev_nextcondop = string(condition.nextcondop)
-		condition = condition.nextcond
+		prevRes = res
+		prevNextcondop = string(condition.Nextcondop)
+		condition = condition.Nextcond
 	}
 
 	if res {

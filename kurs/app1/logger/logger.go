@@ -1,4 +1,4 @@
-// Package logger implements functions and structs to logging INFO ERROR WARNING messges to log file and to stdout
+// Package logger implements functions and structs to logging INFO ERROR WARNING messages to log file and to stdout
 //
 // The InitLoggers func opens(creates) log file and creates several loggers
 //
@@ -13,7 +13,7 @@ import (
 	"os"
 )
 
-// InitLoggers - начальная инициализация - лог файлы/ логгеры
+// InitLogger InitLoggers - начальная инициализация - лог файлы/ логгеры
 // File - log file name, debug - y/n - выдача на экран одновременно, уровень логгирования (толком не работает но ладно)
 func InitLogger(File string, debug bool, loglevel int) (*logrus.Logger, error) {
 	file, err := os.OpenFile(File, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
