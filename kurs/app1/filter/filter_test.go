@@ -17,15 +17,18 @@ import (
 // mockery --name Parse
 // NewFilter Mocking test
 func TestFilter_New(t *testing.T) {
-	// инициализция мокинг структур
+	// инициализция мокинг структуры
 	ParseMock := &mocks.Parse{}
+	// настройки для мок функций
 	cond := &filter.Condition{Colname: "a", Oper: filter.OpE, Value: "4.2"}
-	args := `a != 4.2 AND b = 3` // todo comments
+	// логическое выражение
+	args := `a != 4.2 AND b = 3`
+	// названия колонок (и названия из файла, как бы)
 	line := "a,b,c"
 	fileCols := strings.Split(line, ",")
 	// process get columns name from cmd
 	flgCols := strings.Split(line, ",")
-
+	// структуры для мокинг функций
 	colsIdx := map[string]int{
 		"a": 0,
 		"b": 0,
@@ -37,7 +40,7 @@ func TestFilter_New(t *testing.T) {
 		"b": 1,
 		"c": 1,
 	}
-	//(fileCols ,flgCols)
+    // 2 функции которые входят в тестируюмую функцию
 	ParseMock.On("ParseHeading", mock.Anything, mock.Anything).Return(colsMask, colsIdx)
 	ParseMock.On("ParseCondition", mock.Anything, mock.Anything).Return(cond, nil)
 
