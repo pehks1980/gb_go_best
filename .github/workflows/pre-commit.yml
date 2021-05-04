@@ -25,7 +25,7 @@ jobs:
         go-version: 1.16.3
 
     - name: Test
-      run: go test ./filter/...
+      run: go test ./...
 
     - name: Check
       run: |
