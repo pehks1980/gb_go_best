@@ -11,6 +11,7 @@ type IFFilter interface {
 	New(args string, fileCols []string, flgCols []string) (*Filter, error)
 	Filter(filerow []string) (string, error)
 }
+
 // Parse interface for mock
 type Parse interface {
 	ParseHeading(fileCols, flgCols []string) (map[string]int, map[string]int)
@@ -54,6 +55,7 @@ type Filter struct {
 	// iteract via interface
 	Parse Parse
 }
+
 // New method for create struc via interface IFFilter
 func (fl *Filter) New(args string, fileCols []string, flgCols []string) (*Filter, error) {
 	return NewFilter(args, fileCols, flgCols, false, nil)
@@ -67,7 +69,6 @@ func NewFilter(args string, fileCols, flgCols []string, mockon bool, ParseIf Par
 	} else {
 		filter.Parse = ParseIf
 	}
-
 
 	colsMask, colsIdx := filter.Parse.ParseHeading(fileCols, flgCols)
 
@@ -118,6 +119,7 @@ func (fl *Filter) ParseHeading(fileCols, flgCols []string) (map[string]int, map[
 	}
 	return colsMask, colsIdx
 }
+
 // ParseCondition -  reads user cmd and creates linked structs Condition
 func (fl *Filter) ParseCondition(cmd []string, colsMask map[string]int) (*Condition, error) {
 	// parse cli to condition
@@ -155,11 +157,11 @@ func (fl *Filter) ParseCondition(cmd []string, colsMask map[string]int) (*Condit
 		if len(cmd) > 4 {
 			// check link b/w logical sets
 			switch cmd[3] {
-			case "AND":
+			case string(OpAnd):
 				cond.Nextcondop = OpAnd
-			case "OR":
+			case string(OpOr):
 				cond.Nextcondop = OpOr
-			case "XOR":
+			case string(OpXor):
 				cond.Nextcondop = OpXor
 			default:
 				err := fmt.Errorf("operand %s not found", cmd[3])

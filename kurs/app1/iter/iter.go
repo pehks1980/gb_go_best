@@ -123,9 +123,9 @@ func ReadLinesReadString(fn string, delim byte) (<-chan string, error) {
 	go func() {
 		// Не забываем закрыть файл при выходе из функции
 		defer func() {
-			err := file.Close()
-			if err != nil {
-				log.Printf("cant close file: %v", err)
+			var ferr = file.Close()
+			if ferr != nil {
+				log.Printf("cant close file: %v", ferr)
 			}
 		}()
 

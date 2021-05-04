@@ -57,7 +57,6 @@ func main() {
 		log.Fatalf("path error %v ", err)
 	}
 
-
 	cmd := exec.Command("git", "log", "--pretty=format:\"%h - %an, %ar : %s\"")
 	stdout, err := cmd.Output()
 	if err != nil {
@@ -68,7 +67,7 @@ func main() {
 	strouts := strings.Split(strout, "\n")
 
 	//fmt.Println(strouts[0])
-	fmt.Printf("base path= %s git last commit version=%s \n",basepath, strouts[0])
+	fmt.Printf("base path= %s git last commit version=%s \n", basepath, strouts[0])
 
 	/*
 		args := `third > 0.4 AND first = "www" OR second = "Kesha"`
@@ -111,11 +110,11 @@ func main() {
 	if err != nil {
 		errorlogger.Errorf("AnalizeError: %v", err)
 	}
- /*
-	for _, _ = range resulttext {
-		//fmt.Println(str)
-	}
-*/
+	/*
+		for _, _ = range resulttext {
+			//fmt.Println(str)
+		}
+	*/
 	errorlogger.Infof("Finished the application..")
 	accesslogger.Infof("Finished the application..")
 }
