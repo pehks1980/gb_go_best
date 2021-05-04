@@ -8,7 +8,7 @@ build:
 	go build ./cmd/main.go
 # test filter
 test:
-	go test ./...
+	go test ./filter/...
 # vet
 vet:
 	go vet $$(go list ./... | grep -v native)
