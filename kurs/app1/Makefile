@@ -7,8 +7,8 @@ lint:
 build:
 	go build ./cmd/main.go
 # test filter
-test: vet
-	go test ./filter/filter_test.go
+test:
+	go test ./...
 # vet
 vet:
 	go vet $$(go list ./... | grep -v native)
