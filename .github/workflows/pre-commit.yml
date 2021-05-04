@@ -27,7 +27,14 @@ jobs:
     - name: Test
       run: go test ./kurs/app1/filter
 
-    - name: Check
-      run: |
-        go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.39.0
-        golangci-lint run ./kurs/app1/..
+    - name: Install GolangCI-lint
+      run: go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.39.0
+
+    - name: Install Golint
+      run: go get -u golang.org/x/lint/golint
+
+    - name: Check Golint
+      run: golint $(go list ./kurs/app1/... | grep -v /vendor/)
+
+    - name: Check Golangci-lint
+      run: golangci-lint run ./kurs/app1/...
