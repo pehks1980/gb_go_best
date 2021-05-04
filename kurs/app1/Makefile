@@ -13,5 +13,8 @@ test: vet
 vet:
 	go vet $$(go list ./... | grep -v native)
 
+hooks:
+	pre-commit run --all-files
 
-.PHONY: test check build vet lint
+
+.PHONY: test check build vet lint hooks

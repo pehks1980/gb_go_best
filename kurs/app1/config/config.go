@@ -25,4 +25,3 @@ func New(cfgFile string) (*Config, error) {
 
 	return config, nil
 }
-

@@ -14,9 +14,9 @@ type queueSvc interface {
 	Get(req *web_broker.GetValueReq) (*web_broker.GetValueResp, error) // получить из хранилища значение по ключу
 }
 
-// регистрация роутинга путей типа urls.py для обработки сервером 
+// регистрация роутинга путей типа urls.py для обработки сервером
 func RegisterPublicHTTP(queueSvc queueSvc) *mux.Router {
-	// 
+	//
 	r := mux.NewRouter()
 	// HandleFunc registers a new route with a matcher for the URL path
 	// путь - обработчик(интерфейс очередной)
