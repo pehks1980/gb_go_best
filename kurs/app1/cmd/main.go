@@ -92,7 +92,7 @@ func main() {
 	accesslogger.Infof("user file : %s", pathfile)
 	accesslogger.Infof("user press ctr+c to stop any time.. :")
 
-	resulttext, err := pingAnalize(pathfile, args, *flCols, c.Timeout, errorlogger)
+	_, err = pingAnalize(pathfile, args, *flCols, c.Timeout, errorlogger)
 	if err != nil {
 		errorlogger.Errorf("AnalizeError: %v", err)
 	}
