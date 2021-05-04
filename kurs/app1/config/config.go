@@ -5,7 +5,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 )
-
+// Config - конфиг структура по файлу .env
 type Config struct {
 	Timeout int `envconfig:"TIMEOUT" required:"true"`
 }

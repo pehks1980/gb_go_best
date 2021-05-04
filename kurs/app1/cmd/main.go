@@ -4,17 +4,18 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/pehks1980/gb_go_best/kurs/app1/config"
-	"github.com/pehks1980/gb_go_best/kurs/app1/filter"
-	"github.com/pehks1980/gb_go_best/kurs/app1/iter"
-	"github.com/pehks1980/gb_go_best/kurs/app1/logger"
-	"github.com/sirupsen/logrus"
 	"log"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/pehks1980/gb_go_best/kurs/app1/config"
+	"github.com/pehks1980/gb_go_best/kurs/app1/filter"
+	"github.com/pehks1980/gb_go_best/kurs/app1/iter"
+	"github.com/pehks1980/gb_go_best/kurs/app1/logger"
+	"github.com/sirupsen/logrus"
 )
 
 /*
@@ -95,11 +96,11 @@ func main() {
 	if err != nil {
 		errorlogger.Errorf("AnalizeError: %v", err)
 	}
-
+ /*
 	for _, _ = range resulttext {
 		//fmt.Println(str)
 	}
-
+*/
 	errorlogger.Infof("Finished the application..")
 	accesslogger.Infof("Finished the application..")
 }
@@ -140,7 +141,7 @@ func readAnalizeFile(pathfile string, args string, flcols string, errorlogger *l
 		return nil, err
 	}
 	//read file in a python generator fashion
-	 // fmt.Println(delims)
+	// fmt.Println(delims)
 	reader, err := iter.ReadLinesReadString(pathfile, lineDel)
 	if err != nil {
 		return nil, err
@@ -255,8 +256,8 @@ func validateCols(fileCols []string, flgCols []string) error {
 			}
 		}
 		if notfound {
-			err_str := fmt.Sprintf("column %s not found in file columns", flgcls)
-			er = append(er, err_str)
+			errstr := fmt.Sprintf("column %s not found in file columns", flgcls)
+			er = append(er, errstr)
 		}
 	}
 	if len(er) > 0 {

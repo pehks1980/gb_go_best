@@ -6,11 +6,12 @@ import (
 	"strings"
 )
 
+// IFFilter interface for filter struct&method
 type IFFilter interface {
 	New(args string, fileCols []string, flgCols []string) (*Filter, error)
 	Filter(filerow []string) (string, error)
 }
-
+// Parse interface for mock
 type Parse interface {
 	ParseHeading(fileCols, flgCols []string) (map[string]int, map[string]int)
 	ParseCondition(cmd []string, colsMask map[string]int) (*Condition, error)
@@ -18,6 +19,7 @@ type Parse interface {
 
 type base string
 
+// operators accepted
 const (
 	OpE   base = "="
 	OpNe  base = "!="
@@ -52,7 +54,7 @@ type Filter struct {
 	// iteract via interface
 	Parse Parse
 }
-
+// New method for create struc via interface IFFilter
 func (fl *Filter) New(args string, fileCols []string, flgCols []string) (*Filter, error) {
 	return NewFilter(args, fileCols, flgCols, false, nil)
 }
@@ -116,7 +118,7 @@ func (fl *Filter) ParseHeading(fileCols, flgCols []string) (map[string]int, map[
 	}
 	return colsMask, colsIdx
 }
-
+// ParseCondition -  reads user cmd and creates linked structs Condition
 func (fl *Filter) ParseCondition(cmd []string, colsMask map[string]int) (*Condition, error) {
 	// parse cli to condition
 	// "column_name OP value" Например, age > 40 AND status = “sick”
@@ -279,8 +281,8 @@ func (fl *Filter) Filter(filerow []string) (string, error) {
 	return "", err
 }
 
-//its a shame go doesnt have this func yet as builtin
-//insert element before pos in slice. if pos >= len(arr) insert into tail
+// StringSliceIns - its a shame go doesnt have this func yet as builtin
+// insert element before pos in slice. if pos >= len(arr) insert into tail
 func StringSliceIns(arr []string, pos int, elem string) []string {
 	if pos < 0 {
 		pos = 0

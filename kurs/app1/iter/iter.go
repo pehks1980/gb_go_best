@@ -3,11 +3,12 @@ package iter
 import (
 	"bufio"
 	"fmt"
-	"github.com/csimplestring/go-csv/detector"
 	"io"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/csimplestring/go-csv/detector"
 )
 
 // ReadlinesScanner is an iterator that returns one line of a file at a time.
@@ -48,7 +49,7 @@ func ReadlinesScanner(path string) (<-chan string, error) {
 	return chnl, nil
 }
 
-// Проверка на то какой разделитель будет в csv файле ;,
+// CheckDelimiters Проверка на то какой разделитель будет в csv файле ;,
 func CheckDelimiters(path string) []string {
 	detector := detector.New()
 
@@ -63,7 +64,7 @@ func CheckDelimiters(path string) []string {
 	return delimiters
 }
 
-// собственный поиск конца строки в файле (умный)
+// CheckEndLineDelimiters собственный поиск конца строки в файле (умный)
 func CheckEndLineDelimiters(path string) (byte, error) {
 	file, err := os.OpenFile(path, os.O_RDONLY, os.ModePerm)
 	if err != nil {
@@ -81,21 +82,21 @@ func CheckEndLineDelimiters(path string) (byte, error) {
 	//fmt.Println(out)
 
 	// -1 means no such symbol
-	del_idx_r := strings.Index(out, "\r")
-	del_idx_n := strings.Index(out, "\n")
+	delidxr := strings.Index(out, "\r")
+	delidxn := strings.Index(out, "\n")
 
-	if del_idx_r == -1 && del_idx_n == 1 {
+	if delidxr == -1 && delidxn == 1 {
 		// coudnot find delimeter error not \n nor \r
-		err := fmt.Errorf(" coudnt find \r \n in file this is not good!")
+		err := fmt.Errorf("coudn't find \r \n in file this is not good")
 		return 0, err
 	}
 
-	if del_idx_n != -1 && del_idx_r == -1 {
+	if delidxn != -1 && delidxr == -1 {
 		//only r
 		return '\n', nil
 	}
 
-	if del_idx_n == -1 && del_idx_r != -1 {
+	if delidxn == -1 && delidxr != -1 {
 		//only r
 		return '\r', nil
 	}
@@ -104,7 +105,8 @@ func CheckEndLineDelimiters(path string) (byte, error) {
 	return '\n', nil
 
 }
-// чтение строки файла путем readstring (можно указать признак конца строки)
+
+// ReadLinesReadString чтение строки файла путем readstring (можно указать признак конца строки)
 // считанная строка отправляется в канал
 func ReadLinesReadString(fn string, delim byte) (<-chan string, error) {
 	//fmt.Println("readFileWithReadString")
