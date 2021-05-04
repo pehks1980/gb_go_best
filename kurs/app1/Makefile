@@ -1,26 +1,16 @@
-# remove logs
-clean:
-	@go clean -i ./...
-# linter
-check: golint vet
-
-testdeps:
-	go get -d -v -t ./...
-	go get -v $(LINTERS)
-
-golint: testdeps
-
+# linter vet
+check: lint vet
+# golangci-lint (must be installed and setup)
+lint:
+	golangci-lint run
 # exe
 build:
-	@go build ./...
-# test
+	go build ./cmd/main.go
+# test filter
 test: vet
-	@go test main_test.go
+	go test ./filter/filter_test.go
 # vet
 vet:
-	@go vet $$(go list ./... | grep -v native)
-# vendor
-vendor:
-	@go run _scripts/make.go vendor
+	go vet $$(go list ./... | grep -v native)
 
-.PHONY: vendor test check build vet clean golint errcheck staticcheck testdeps buildandrun
+.PHONY: test check build vet lint

@@ -54,14 +54,18 @@ type Filter struct {
 }
 
 func (fl *Filter) New(args string, fileCols []string, flgCols []string) (*Filter, error) {
-	return NewFilter(args, fileCols, flgCols)
+	return NewFilter(args, fileCols, flgCols, false, nil)
 }
 
 // NewFilter инициализация структуры - установление структуры - condition - условия отбора
-func NewFilter(args string, fileCols, flgCols []string) (*Filter, error) {
+func NewFilter(args string, fileCols, flgCols []string, mockon bool, ParseIf Parse) (*Filter, error) {
 	filter := new(Filter)
+	if mockon == false {
+		filter.Parse = filter
+	} else {
+		filter.Parse = ParseIf
+	}
 
-	filter.Parse = filter
 
 	colsMask, colsIdx := filter.Parse.ParseHeading(fileCols, flgCols)
 
@@ -263,7 +267,7 @@ func (fl *Filter) Filter(filerow []string) (string, error) {
 
 		for col, val := range cols {
 			if fl.ColsMask[col] == 1 {
-				outarr = stringsliceins(outarr, fl.ColsIdx[col], val)
+				outarr = StringSliceIns(outarr, fl.ColsIdx[col], val)
 			}
 		}
 
@@ -277,7 +281,7 @@ func (fl *Filter) Filter(filerow []string) (string, error) {
 
 //its a shame go doesnt have this func yet as builtin
 //insert element before pos in slice. if pos >= len(arr) insert into tail
-func stringsliceins(arr []string, pos int, elem string) []string {
+func StringSliceIns(arr []string, pos int, elem string) []string {
 	if pos < 0 {
 		pos = 0
 	} else if pos >= len(arr) {
