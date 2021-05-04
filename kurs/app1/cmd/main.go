@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -20,7 +21,7 @@ import (
 
 /*
 
-1. При запуске программа печатает путь до исполняемого файла и версию последнего коммита todo
+1. При запуске программа печатает путь до исполняемого файла и версию последнего коммита ok
 2. Программа должна корректно обрабатывать выход по сигналу SIGINT, прерывая поиск, если он запущен ok
 3. Программа должна получать настройки из текстового конфигурационного файла (например, в TOML формате) при старте ok
 4. Программа должна завершать исполнение запроса, если он занимает слишком продолжительное время
@@ -29,16 +30,14 @@ import (
 5 Программа должна логировать все запросы в файл access.log,
 логировать все ошибки (например, остановку пользователем или прерывания по таймауту, невалидные запросы пользователя) в error.log
 ok
-
 5.1 Код должен быть покрыт тестами (test coverage хотя бы 30%) ok
-
 6. Код должен быть организован согласно выбранным принципам, например
 можно использовать project-layout для вдохновения cвой простой формат адекватный для данной задачи.
-7. Должен быть создан конфигурационный файл для golangci-lint - yml наверное можно взять из пред урока
-8. При коммите в локальный репозиторий в автоматическом режиме должно - gh actions todo
+7. Должен быть создан конфигурационный файл для golangci-lint - yml ok (взять из пред урока)
+8. При коммите в локальный репозиторий в автоматическом режиме должно - gh actions ok
 происходить следующее:
-a. make test - должен запускать тесты и печатать отчет о coverage
-b. make check - должен запускать все линтеры + make file для последнего урока
+a. make test - должен запускать тесты и печатать отчет о coverage ok
+b. make check - должен запускать все линтеры + make file для последнего урока ok
 */
 
 var (
@@ -51,16 +50,32 @@ var (
 
 func main() {
 	//sets for testing files
-
 	//просто набор - пара настроек
-	basepath := "/Users/user/go/gb/gb_bp/gb_go_best/"
+	//basepath := "/Users/user/go/gb/gb_bp/gb_go_best/"
+	basepath, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("path error %v ", err)
+	}
+
+
+	cmd := exec.Command("git", "log", "--pretty=format:\"%h - %an, %ar : %s\"")
+	stdout, err := cmd.Output()
+	if err != nil {
+		log.Printf("Command finished with error: %v", err)
+	}
+	strout := string(stdout)
+
+	strouts := strings.Split(strout, "\n")
+
+	//fmt.Println(strouts[0])
+	fmt.Printf("base path= %s git last commit version=%s \n",basepath, strouts[0])
+
 	/*
-		args := `third > 0.4 AsND first = "www" OR second = "Kesha"`
+		args := `third > 0.4 AND first = "www" OR second = "Kesha"`
 		args = `third = 4.2 XOR first != "www"`
-		pathfile := basepath + "kurs/app1/test.csv"
 	*/
 	args := `crimedescr = "459 PC  BURGLARY VEHICLE"`
-	pathfile := basepath + "kurs/app1/test1.csv"
+	pathfile := basepath + "/kurs/app1/test1.csv"
 
 	// init flag / loggers
 	flag.Parse()
@@ -81,7 +96,7 @@ func main() {
 	errorlogger.Infof("1 Starting the application...")
 
 	// load config
-	c, err := config.New(basepath + "kurs/app1/config/.env")
+	c, err := config.New(basepath + "/kurs/app1/config/.env")
 	if err != nil {
 		errorlogger.Errorf("config error : %v", err)
 		return
