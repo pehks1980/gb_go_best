@@ -5,16 +5,17 @@ lint1:
 	golangci-lint run ./...
 lint2:
 	#go get -u golang.org/x/lint/golint
-	/Users/user/go/bin/golint $$(go list ./... | grep -v native)
+	#/Users/user/go/bin/
+	golint $$(go list ./... | grep -v native)
 # exe
 build:
-	go build ./cmd/main.go
+	@go build ./cmd/main.go
 # test filter
 test:
-	go test ./filter/...
+	@go test ./filter/...
 # vet
 vet:
-	go vet $$(go list ./... | grep -v native)
+	@go vet $$(go list ./... | grep -v native)
 
 hooks:
 	pre-commit run --all-files

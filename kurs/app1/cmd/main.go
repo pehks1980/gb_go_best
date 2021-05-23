@@ -74,8 +74,9 @@ func main() {
 		args = `third = 4.2 XOR first != "www"`
 	*/
 	args := `crimedescr = "459 PC  BURGLARY VEHICLE"`
-	pathfile := basepath + "/kurs/app1/test1.csv"
+	pathfile := basepath[:len(basepath)-3] + "/test1.csv"
 
+	fmt.Println(pathfile)
 	// init flag / loggers
 	flag.Parse()
 
@@ -95,7 +96,7 @@ func main() {
 	errorlogger.Infof("1 Starting the application...")
 
 	// load config
-	c, err := config.New(basepath + "/kurs/app1/config/.env")
+	c, err := config.New(basepath[:len(basepath)-3] + "/config/.env")
 	if err != nil {
 		errorlogger.Errorf("config error : %v", err)
 		return
