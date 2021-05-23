@@ -7,11 +7,10 @@
 package logger
 
 import (
+	"github.com/sirupsen/logrus"
 	"io"
 	"log"
 	"os"
-
-	"github.com/sirupsen/logrus"
 )
 
 // InitLogger InitLoggers - начальная инициализация - лог файлы/ логгеры
